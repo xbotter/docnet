@@ -1,5 +1,6 @@
 ﻿using System;
 using Docnet.Core.Exceptions;
+using Docnet.Core.Models;
 using Docnet.Tests.Integration.Utils;
 using Xunit;
 
@@ -18,13 +19,13 @@ namespace Docnet.Tests.Integration
         [Fact]
         public void GetDocReader_WhenCalledWithNullFilePath_ShouldThrow()
         {
-            Assert.Throws<ArgumentNullException>(() => _fixture.Lib.GetDocReader((string)null, null, 10, 10));
+            Assert.Throws<ArgumentNullException>(() => _fixture.Lib.GetDocReader((string)null, null, new PageDimensions(10, 10)));
         }
 
         [Fact]
         public void GetDocReader_WhenCalledWithNullBytes_ShouldThrow()
         {
-            Assert.Throws<ArgumentNullException>(() => _fixture.Lib.GetDocReader((byte[])null, null, 10, 10));
+            Assert.Throws<ArgumentNullException>(() => _fixture.Lib.GetDocReader((byte[])null, null, new PageDimensions(10, 10)));
         }
 
         [Theory]
@@ -32,7 +33,7 @@ namespace Docnet.Tests.Integration
         [InlineData(Input.FromFile)]
         public void GetDocReader_WhenCalledWithInvalidFileData_ShouldThrow(Input type)
         {
-            Assert.Throws<DocnetException>(() => _fixture.GetDocReader(type, "Docs/protected_0.pdf", null, 10, 10));
+            Assert.Throws<DocnetLoadDocumentException>(() => _fixture.GetDocReader(type, "Docs/protected_0.pdf", null, 10, 10));
         }
 
         [Theory]

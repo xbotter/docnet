@@ -2,23 +2,38 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <PlatformTarget>x64</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>1701;1702;1591;0649</NoWarn>
+
+    <version>$(VersionSuffix)</version>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
     <Authors>Modestas Petravicius</Authors>
     <Product>DocNet</Product>
     <Description>DocNET is a fast PDF editing and reading library for modern .NET applications.</Description>
-    <version>$(VersionSuffix)</version>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>1701;1702;1591;0649</NoWarn>
     <Copyright>MIT</Copyright>
-    <PackageLicenseUrl>https://github.com/GowenGit/docnet/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/GowenGit/docnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/GowenGit/docnet</RepositoryUrl>
     <PackageTags>PDF; Reader; netstandard; PDFium; JPEG; JPG</PackageTags>
-    <PackageIconUrl>https://raw.githubusercontent.com/GowenGit/docnet/master/assets/icon.png</PackageIconUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="runtimes/**" PackagePath="runtimes" Visible="true" />
+    <Content Include="build/net45/Docnet.Core.targets" Pack="true" PackagePath="build/net45/" />
+    <None Include="../../assets/icon.png" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+    <PackageReference Include="Obsessive.Defender" Version="1.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

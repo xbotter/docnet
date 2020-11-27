@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using Docnet.Core.Bindings;
 using Docnet.Core.Editors;
+using Docnet.Core.Models;
 using Docnet.Core.Readers;
 using Docnet.Core.Validation;
+using Docnet.Core.Exceptions;
 
 // ReSharper disable ParameterOnlyUsedForPreconditionCheck.Local
-
 namespace Docnet.Core
 {
     public sealed class DocLib : IDocLib
@@ -50,41 +51,31 @@ namespace Docnet.Core
         }
 
         /// <inheritdoc />
-        public IDocReader GetDocReader(string filePath, int dimOne, int dimTwo)
+        public IDocReader GetDocReader(string filePath, PageDimensions dimensionOptions)
         {
-            return GetDocReader(filePath, null, dimOne, dimTwo);
+            return GetDocReader(filePath, null, dimensionOptions);
         }
 
         /// <inheritdoc />
-        public IDocReader GetDocReader(string filePath, string password, int dimOne, int dimTwo)
+        public IDocReader GetDocReader(string filePath, string password, PageDimensions dimensionOptions)
         {
             Validator.CheckFilePathNotNull(filePath, nameof(filePath));
 
-            Validator.CheckNotLessOrEqualToZero(dimOne, nameof(dimOne));
-            Validator.CheckNotLessOrEqualToZero(dimTwo, nameof(dimTwo));
-
-            Validator.CheckNotGreaterThan(dimOne, dimTwo, nameof(dimOne), nameof(dimTwo));
-
-            return new DocReader(filePath, password, dimOne, dimTwo);
+            return new DocReader(filePath, password, dimensionOptions);
         }
 
         /// <inheritdoc />
-        public IDocReader GetDocReader(byte[] bytes, int dimOne, int dimTwo)
+        public IDocReader GetDocReader(byte[] bytes, PageDimensions dimensionOptions)
         {
-            return GetDocReader(bytes, null, dimOne, dimTwo);
+            return GetDocReader(bytes, null, dimensionOptions);
         }
 
         /// <inheritdoc />
-        public IDocReader GetDocReader(byte[] bytes, string password, int dimOne, int dimTwo)
+        public IDocReader GetDocReader(byte[] bytes, string password, PageDimensions dimensionOptions)
         {
             Validator.CheckBytesNullOrZero(bytes, nameof(bytes));
 
-            Validator.CheckNotLessOrEqualToZero(dimOne, nameof(dimOne));
-            Validator.CheckNotLessOrEqualToZero(dimTwo, nameof(dimTwo));
-
-            Validator.CheckNotGreaterThan(dimOne, dimTwo, nameof(dimOne), nameof(dimTwo));
-
-            return new DocReader(bytes, password, dimOne, dimTwo);
+            return new DocReader(bytes, password, dimensionOptions);
         }
 
         /// <inheritdoc />
@@ -109,7 +100,7 @@ namespace Docnet.Core
         public byte[] Split(string filePath, int pageFromIndex, int pageToIndex)
         {
             Validator.CheckFilePathNotNull(filePath, nameof(filePath));
-            Validator.ValidatePageIndices(pageFromIndex, pageToIndex, nameof(pageFromIndex), nameof(pageToIndex));
+            Validator.ValidatePageIndices(pageFromIndex, pageToIndex);
 
             return _editor.Split(filePath, pageFromIndex, pageToIndex);
         }
@@ -118,7 +109,7 @@ namespace Docnet.Core
         public byte[] Split(byte[] bytes, int pageFromIndex, int pageToIndex)
         {
             Validator.CheckBytesNullOrZero(bytes, nameof(bytes));
-            Validator.ValidatePageIndices(pageFromIndex, pageToIndex, nameof(pageFromIndex), nameof(pageToIndex));
+            Validator.ValidatePageIndices(pageFromIndex, pageToIndex);
 
             return _editor.Split(bytes, pageFromIndex, pageToIndex);
         }
@@ -140,7 +131,6 @@ namespace Docnet.Core
 
             return _editor.Split(bytes, pageRange);
         }
-
 
         /// <inheritdoc />
         public byte[] Unlock(string filePath, string password)
@@ -177,27 +167,7 @@ namespace Docnet.Core
             {
                 var code = fpdf_view.FPDF_GetLastError();
 
-                switch (code)
-                {
-                    case 0:
-                        return "no error";
-                    case 1:
-                        return "unknown error";
-                    case 2:
-                        return "file not found or could not be opened";
-                    case 3:
-                        return "file not in PDF format or corrupted";
-                    case 4:
-                        return "password required or incorrect password";
-                    case 5:
-                        return "unsupported security scheme";
-                    case 6:
-                        return "page not found or content error";
-                    case 1001:
-                        return "the requested operation cannot be completed due to a license restrictions";
-                    default:
-                        return "unknown error";
-                }
+                return LastError.ErrorCodePhrase(code);
             }
         }
 

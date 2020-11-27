@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Docnet.Core.Bindings;
+using Docnet.Core.Converters;
 using Docnet.Core.Exceptions;
 using Docnet.Core.Models;
 
@@ -17,7 +18,7 @@ namespace Docnet.Core.Readers
         /// <inheritdoc />
         public int PageIndex { get; }
 
-        public PageReader(DocumentWrapper docWrapper, int pageIndex, int dimOne, int dimTwo)
+        public PageReader(DocumentWrapper docWrapper, int pageIndex, PageDimensions pageDimensions)
         {
             PageIndex = pageIndex;
 
@@ -37,7 +38,7 @@ namespace Docnet.Core.Readers
                     throw new DocnetException($"failed to open page text for page index {pageIndex}");
                 }
 
-                _scaling = GetScalingFactor(_page, dimOne, dimTwo);
+                _scaling = pageDimensions.GetScalingFactor(_page);
             }
         }
 
@@ -77,7 +78,7 @@ namespace Docnet.Core.Readers
 
             if (charactersWritten == 0)
             {
-                return "";
+                return string.Empty;
             }
 
             string result;
@@ -114,14 +115,20 @@ namespace Docnet.Core.Readers
 
                     var success = fpdf_text.FPDFTextGetCharBox(_text, i, ref left, ref right, ref bottom, ref top) == 1;
 
-                    if (!success) continue;
+                    if (!success)
+                    {
+                        continue;
+                    }
 
                     var (adjustedLeft, adjustedTop) = GetAdjustedCoords(width, height, left, top);
                     var (adjustRight, adjustBottom) = GetAdjustedCoords(width, height, right, bottom);
 
                     var box = new BoundBox(adjustedLeft, adjustedTop, adjustRight, adjustBottom);
 
-                    yield return new Character(charCode, box);
+                    var fontSize = fpdf_text.FPDFTextGetFontSize(_text, i);
+                    var angle = fpdf_text.FPDFTextGetCharAngle(_text, i);
+
+                    yield return new Character(charCode, box, angle, fontSize);
                 }
             }
         }
@@ -132,8 +139,16 @@ namespace Docnet.Core.Readers
             var y = 0;
 
             fpdf_view.FPDF_PageToDevice(
-                _page, 0, 0, width, height, 0,
-                pageX, pageY, ref x, ref y);
+                _page,
+                0,
+                0,
+                width,
+                height,
+                0,
+                pageX,
+                pageY,
+                ref x,
+                ref y);
 
             x = AdjustToRange(x, width);
             y = AdjustToRange(y, height);
@@ -157,7 +172,10 @@ namespace Docnet.Core.Readers
         }
 
         /// <inheritdoc />
-        public byte[] GetImage()
+        public byte[] GetImage() => GetImage(0);
+
+        /// <inheritdoc />
+        public byte[] GetImage(RenderFlags flags)
         {
             lock (DocLib.Lock)
             {
@@ -177,9 +195,9 @@ namespace Docnet.Core.Readers
 
                 try
                 {
-                    //          | a b 0 |
-                    // matrix = | c d 0 |
-                    //          | e f 1 |
+                    // |          | a b 0 |
+                    // | matrix = | c d 0 |
+                    // |          | e f 1 |
                     using (var matrix = new FS_MATRIX_())
                     using (var clipping = new FS_RECTF_())
                     {
@@ -195,7 +213,7 @@ namespace Docnet.Core.Readers
                         clipping.Bottom = 0;
                         clipping.Top = height;
 
-                        fpdf_view.FPDF_RenderPageBitmapWithMatrix(bitmap, _page, matrix, clipping, 0);
+                        fpdf_view.FPDF_RenderPageBitmapWithMatrix(bitmap, _page, matrix, clipping, (int)flags);
 
                         var buffer = fpdf_view.FPDFBitmapGetBuffer(bitmap);
 
@@ -215,23 +233,15 @@ namespace Docnet.Core.Readers
             }
         }
 
-        /// <summary>
-        /// Gets rescaling factor for native width x height of the page
-        /// so it maximizes the dimOne x dimTwo rectangle
-        /// </summary>
-        /// <param name="page">Page object</param>
-        /// <param name="dimOne">Smaller dimension</param>
-        /// <param name="dimTwo">Larger dimension</param>
-        /// <returns>Scaling factor</returns>
-        private static double GetScalingFactor(FpdfPageT page, int dimOne, int dimTwo)
+        /// <inheritdoc />
+        public byte[] GetImage(IImageBytesConverter converter) => GetImage(converter, 0);
+
+        /// <inheritdoc />
+        public byte[] GetImage(IImageBytesConverter converter, RenderFlags flags)
         {
-            var width = fpdf_view.FPDF_GetPageWidth(page);
-            var height = fpdf_view.FPDF_GetPageHeight(page);
+            var bytes = GetImage(flags);
 
-            var scaleOne = dimOne / Math.Min(width, height);
-            var scalingTwo = dimTwo / Math.Max(width, height);
-
-            return Math.Min(scaleOne, scalingTwo);
+            return converter.Convert(bytes);
         }
 
         public void Dispose()
